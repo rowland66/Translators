@@ -10,6 +10,7 @@ import org.rowland.jinix.nio.JinixFileChannel;
 import org.rowland.jinix.proc.ProcessManager;
 
 import java.io.*;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.rmi.RemoteException;
@@ -36,6 +37,11 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         rtrn.length = 0;
         rtrn.name = "Unknown";
         return rtrn;
+    }
+
+    @Override
+    public URI getURI() throws RemoteException {
+        return null;
     }
 
     @Override
@@ -75,6 +81,11 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
 
     @Override
     public void delete(String name) throws NoSuchFileException, DirectoryNotEmptyException, RemoteException {
+
+    }
+
+    @Override
+    public void copy(String name, String s, CopyOption... copyOptions) throws NoSuchFileException, FileAlreadyExistsException, RemoteException {
 
     }
 
