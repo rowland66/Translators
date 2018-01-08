@@ -16,6 +16,10 @@ import java.nio.file.*;
 import java.rmi.RemoteException;
 
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A simple translator that translates a single file an returns the current time
@@ -95,7 +99,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
     }
 
     @Override
-    public FileChannel getFileChannel(String s, OpenOption... openOptions) throws FileAlreadyExistsException, NoSuchFileException, RemoteException {
+    public RemoteFileAccessor getRemoteFileAccessor(int pid, String name, Set<? extends OpenOption> openOptions) throws RemoteException {
         String timeStr = String.format("%1$tb %1$td %1$tY  %1$tH:%1$tM:%1$tS"+"\n",System.currentTimeMillis());
         return new TimeTranslatorFileChannel(timeStr);
     }
@@ -105,7 +109,12 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         return name;
     }
 
-    public static class TimeTranslatorFileChannel extends JinixKernelUnicastRemoteObject implements FileChannel {
+    @Override
+    public List<FileAccessorStatistics> getOpenFiles(int i) throws RemoteException {
+        return Collections.emptyList();
+    }
+
+    public static class TimeTranslatorFileChannel extends JinixKernelUnicastRemoteObject implements RemoteFileAccessor {
 
         private ByteArrayInputStream d;
         private int openCount;
@@ -117,7 +126,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public byte[] read(int len) throws RemoteException {
+        public byte[] read(int pgid, int len) throws RemoteException {
             if (d.available() == 0) {
                 return null;
             }
@@ -131,7 +140,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public int write(byte[] bytes) throws RemoteException {
+        public int write(int pgid, byte[] bytes) throws RemoteException {
             return bytes.length;
         }
 
@@ -177,6 +186,11 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
+        public void force(boolean b) throws RemoteException {
+
+        }
+
+        @Override
         public void close() throws RemoteException {
             if (openCount > 0) {
                 openCount--;
@@ -196,7 +210,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
             return;
         }
         try {
-            translator = new TimeTranslator(JinixFileChannel.open(fd));
+            translator = new TimeTranslator(JinixFileChannel.open(fd, null, null));
         } catch (IOException e) {
             throw new RuntimeException("Translator failed initialization",e);
         }
@@ -207,10 +221,12 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
 
         JinixRuntime.getRuntime().registerSignalHandler(new ProcessSignalHandler() {
             @Override
-            public void handleSignal(ProcessManager.Signal signal) {
+            public boolean handleSignal(ProcessManager.Signal signal) {
                 if (signal == ProcessManager.Signal.TERMINATE) {
                     mainThread.interrupt();
+                    return true;
                 }
+                return false;
             }
         });
 
