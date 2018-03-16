@@ -24,10 +24,12 @@ import java.util.Set;
 /**
  * A simple translator that translates a single file an returns the current time
  */
-public class TimeTranslator extends JinixKernelUnicastRemoteObject implements FileNameSpace {
+public class TimeTranslator extends JinixKernelUnicastRemoteObject implements FileNameSpace, TimeKeeper {
     private static TimeTranslator translator;
     private JinixFileChannel translatorNode;
     private static Thread mainThread;
+
+    private int offset; // Adjustment to the time in milli-seconds.
 
     private TimeTranslator(JinixFileChannel translatorNode) throws RemoteException {
         super();
@@ -114,6 +116,16 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         return Collections.emptyList();
     }
 
+    @Override
+    public void setTimeOffset(int offset) throws RemoteException {
+        this.offset = offset;
+    }
+
+    @Override
+    public TimeWithOffset getTimeWithOffset() throws RemoteException {
+        return new TimeWithOffsetImpl(System.currentTimeMillis(), this.offset);
+    }
+
     public static class TimeTranslatorFileChannel extends JinixKernelUnicastRemoteObject implements RemoteFileAccessor {
 
         private ByteArrayInputStream d;
@@ -191,6 +203,11 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
+        public void flush() throws RemoteException {
+
+        }
+
+        @Override
         public void close() throws RemoteException {
             if (openCount > 0) {
                 openCount--;
@@ -237,5 +254,24 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         translator.unexport();
+    }
+
+    public static class TimeWithOffsetImpl implements TimeWithOffset, Serializable {
+        private long time;
+        private int offset;
+
+        private TimeWithOffsetImpl(long time, int offset) {
+            this.time = time;
+            this.offset = offset;
+        }
+        @Override
+        public long getTime() {
+            return time;
+        }
+
+        @Override
+        public int getOffset() {
+            return offset;
+        }
     }
 }
