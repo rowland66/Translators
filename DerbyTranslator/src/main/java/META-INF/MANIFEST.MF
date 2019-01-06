@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Class-Path: derby.jar JDBCRemoteInterface.jar
+Main-Class: org.rowland.jinix.derbytranslator.DerbyTranslator
+
