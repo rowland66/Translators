@@ -193,7 +193,7 @@ public class DataInode extends Inode {
 	 * @throws NoSpaceLeftOnDevice
 	 * @throws FileTooLarge
 	 */
-	public int writeData(ByteBuffer buf, long offset) throws JExt2Exception, NoSpaceLeftOnDevice, FileTooLarge {
+	public int writeData(byte[] rawBytes, long offset) throws JExt2Exception, NoSpaceLeftOnDevice, FileTooLarge {
 		/*
 		 * Note on sparse file support:
 		 * getBlocksAllocate does not care if there are holes. Just write as much
@@ -201,6 +201,7 @@ public class DataInode extends Inode {
 		 * accordingly.
 		 */
 
+		ByteBuffer buf = ByteBuffer.wrap(rawBytes);
 		int blocksize = superblock.getBlocksize();
 		long start = offset/blocksize;
 		long end = (buf.capacity()+blocksize)/blocksize + start;
@@ -208,8 +209,6 @@ public class DataInode extends Inode {
 
 		if (startOff > 0)
 			end += 1;
-
-		//buf.rewind();
 
 		while (start < end) {
 			LinkedList<Long> blockNrs = accessData().getBlocksAllocate(start, 1);

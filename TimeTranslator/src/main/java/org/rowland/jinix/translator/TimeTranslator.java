@@ -13,6 +13,7 @@ import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 import java.rmi.server.UnicastRemoteObject;
@@ -35,8 +36,10 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         super();
         this.translatorNode = translatorNode;
     }
+
+
     @Override
-    public DirectoryFileData getFileAttributes(String name) throws NoSuchFileException, RemoteException {
+    public DirectoryFileData getFileAttributes(String fileName) throws NoSuchFileException, RemoteException {
         DirectoryFileData rtrn = new DirectoryFileData();
         rtrn.type = DirectoryFileData.FileType.FILE;
         rtrn.lastModified = System.currentTimeMillis();
@@ -51,53 +54,43 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
     }
 
     @Override
-    public void setFileAttributes(String name, DirectoryFileData directoryFileData) throws NoSuchFileException, RemoteException {
+    public void setFileAttributes(String fileName, DirectoryFileData directoryFileData) throws NoSuchFileException, RemoteException {
 
     }
 
     @Override
-    public boolean exists(String name) throws RemoteException {
-        return true;
-    }
-
-    @Override
-    public String[] list(String name) throws RemoteException {
+    public String[] list(String directory) throws RemoteException {
         return null;
     }
 
     @Override
-    public DirectoryFileData[] listDirectoryFileData(String name) throws RemoteException {
-        return new DirectoryFileData[0];
-    }
-
-    @Override
-    public boolean createFileAtomically(String name) throws FileAlreadyExistsException, RemoteException {
+    public boolean createFileAtomically(String directory, String name) throws FileAlreadyExistsException, RemoteException {
         return false;
     }
 
     @Override
-    public boolean createDirectory(String name) throws FileAlreadyExistsException, RemoteException {
+    public boolean createDirectory(String directory, String name) throws FileAlreadyExistsException, RemoteException {
         return false;
     }
 
     @Override
-    public boolean createDirectories(String name) throws FileAlreadyExistsException, RemoteException {
-        return false;
-    }
-
-    @Override
-    public void delete(String name) throws NoSuchFileException, DirectoryNotEmptyException, RemoteException {
+    public void delete(String file) throws NoSuchFileException, DirectoryNotEmptyException, RemoteException {
 
     }
 
     @Override
-    public void copy(String name, String s, CopyOption... copyOptions) throws NoSuchFileException, FileAlreadyExistsException, RemoteException {
+    public void copy(RemoteFileHandle sourceFile, RemoteFileHandle targetDirectory, String fileName, CopyOption... copyOptions) {
 
     }
 
     @Override
-    public void move(String name, String s, CopyOption... copyOptions) throws NoSuchFileException, FileAlreadyExistsException, RemoteException {
+    public void move(RemoteFileHandle sourceFile, RemoteFileHandle targetDirectory, String fileName, CopyOption... copyOptions) {
 
+    }
+
+    @Override
+    public Object lookup(int pid, String filePath) throws RemoteException {
+        return null;
     }
 
     @Override
@@ -107,8 +100,18 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
     }
 
     @Override
-    public Object getKey(String name) throws RemoteException {
-        return name;
+    public RemoteFileAccessor getRemoteFileAccessor(int pid, RemoteFileHandle remoteFileHandle, Set<? extends OpenOption> openOptions) throws FileAlreadyExistsException, NoSuchFileException, RemoteException {
+        return getRemoteFileAccessor(pid, remoteFileHandle.getPath(), openOptions);
+    }
+
+    @Override
+    public FileNameSpace getParent() throws RemoteException {
+        return null;
+    }
+
+    @Override
+    public String getPathWithinParent() throws RemoteException {
+        return null;
     }
 
     @Override
@@ -135,6 +138,11 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
             super();
             d = new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8));
             openCount = 1;
+        }
+
+        @Override
+        public RemoteFileHandle getRemoteFileHandle() throws RemoteException {
+            return null;
         }
 
         @Override
@@ -203,11 +211,6 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public void flush() throws RemoteException {
-
-        }
-
-        @Override
         public void close() throws RemoteException {
             if (openCount > 0) {
                 openCount--;
@@ -221,13 +224,13 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
 
     public static void main(String[] args) {
 
-        JinixFileDescriptor fd = JinixRuntime.getRuntime().getTranslatorFile();
-        if (fd == null) {
+        JinixFile jinixFile = JinixRuntime.getRuntime().getTranslatorFile();
+        if (jinixFile == null) {
             System.err.println("Translator must be started with settrans");
             return;
         }
         try {
-            translator = new TimeTranslator(JinixFileChannel.open(fd, null, null));
+            translator = new TimeTranslator(null);
         } catch (IOException e) {
             throw new RuntimeException("Translator failed initialization",e);
         }

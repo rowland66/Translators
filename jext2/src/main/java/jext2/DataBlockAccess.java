@@ -559,7 +559,7 @@ public class DataBlockAccess {
 		long blockNr = newBlock(goal);
 
 		/* Finally return pointer to allocated block or an error */
-		superblock.setFreeBlocksCount(superblock.getFreeBlocksCount() - 1);
+		superblock.incrementFreeBlocksCount( -1);
 		return blockNr;
 	}
 
@@ -696,7 +696,7 @@ public class DataBlockAccess {
 
 		inode.setBlocks(inode.getBlocks() - freed * (superblock.getBlocksize()/ 512));
 		inode.setModificationTime(new Date());
-		superblock.setFreeBlocksCount(superblock.getFreeBlocksCount() + freed);
+		superblock.incrementFreeBlocksCount(freed);
 	}
 
 	/**

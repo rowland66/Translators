@@ -1,6 +1,8 @@
 package org.rowland.jinix.derbytranslator;
 
+import org.rowland.jinix.io.BaseRemoteFileHandleImpl;
 import org.rowland.jinix.naming.RemoteFileAccessor;
+import org.rowland.jinix.naming.RemoteFileHandle;
 
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
@@ -11,6 +13,7 @@ import java.sql.*;
 
 public class TableRemoteFileAccessor extends UnicastRemoteObject implements RemoteFileAccessor {
 
+    private DerbyTranslator parent;
     private String tableName;
     private Connection conn;
     private ResultSet rs;
@@ -21,8 +24,9 @@ public class TableRemoteFileAccessor extends UnicastRemoteObject implements Remo
     private int openCount;
 
 
-    TableRemoteFileAccessor(String tableName, Connection connection) throws RemoteException {
+    TableRemoteFileAccessor(DerbyTranslator parent, String tableName, Connection connection) throws RemoteException {
         try {
+            this.parent = parent;
             this.tableName = tableName;
             this.conn = connection;
             PreparedStatement ps = conn.prepareStatement("select * from " + tableName);
@@ -34,6 +38,11 @@ public class TableRemoteFileAccessor extends UnicastRemoteObject implements Remo
         } catch (SQLException e) {
             throw new RemoteException("Translator Error", e);
         }
+    }
+
+    @Override
+    public RemoteFileHandle getRemoteFileHandle() throws RemoteException {
+        return new BaseRemoteFileHandleImpl(parent, "/data/"+tableName);
     }
 
     @Override

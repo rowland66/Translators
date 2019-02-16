@@ -49,7 +49,7 @@ public class SymlinkInode extends DataInode {
 		ByteBuffer buf = ByteBuffer.allocate(Ext2fsDataTypes.getStringByteLength(link));
 		Ext2fsDataTypes.putString(buf, link, buf.capacity(), 0);
 		buf.rewind();
-		writeData(buf, 0);
+		writeData(buf.array(), 0);
 	}
 
 	@NotThreadSafe(useLock=true)

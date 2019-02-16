@@ -1,9 +1,7 @@
 package org.rowland.jinix.jext2;
 
 import jext2.*;
-import jext2.exceptions.IoError;
-import jext2.exceptions.JExt2Exception;
-import jext2.exceptions.NoSuchFileOrDirectory;
+import jext2.exceptions.*;
 import org.rowland.jinix.JinixKernelUnicastRemoteObject;
 import org.rowland.jinix.naming.*;
 
@@ -15,6 +13,7 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 /**
  * Jext2Translator server for files.
@@ -23,7 +22,6 @@ public class Jext2ChannelServer extends JinixKernelUnicastRemoteObject implement
 
     private Jext2Translator translator;
     private long ino;
-    private long dirIno;
     private int pid;
     private String name;
     private long position;
@@ -32,53 +30,33 @@ public class Jext2ChannelServer extends JinixKernelUnicastRemoteObject implement
     private ReentrantLock positionOperationLock = new ReentrantLock(false);
     private int openCount;
 
-    Jext2ChannelServer(Jext2Translator translator, int pid, String name, long parentIno, long ino, Set<? extends OpenOption> options)
-            throws NoSuchFileException, FileAlreadyExistsException, RemoteException {
+    Jext2ChannelServer(Jext2Translator translator, int pid, String pathName, long ino, Set<? extends OpenOption> options)
+            throws NoSuchFileException, RemoteException {
+
         try {
             this.translator = translator;
             this.pid = pid;
-            this.name = name;
-            this.dirIno = parentIno;
+            this.name = pathName;
             this.ino = ino;
             closed = false;
             openCount = 1;
 
-            if (options == null) {
-                options = Collections.emptySet();
-            }
-
-            if (ino == -1) {
-                if (!(options.contains(StandardOpenOption.CREATE) ||
-                        options.contains(StandardOpenOption.CREATE_NEW))) {
-                    throw new NoSuchFileException(name);
-                }
-                DirectoryInode dirInode = (DirectoryInode) translator.inodes.openInode(dirIno);
-                try {
-                    inode = RegularInode.createEmpty();
-                    inode.setMode(new ModeBuilder()
-                            .regularFile()
-                            .create());
-                    InodeAlloc.registerInode(dirInode, inode);
-                    inode.write();
-                    dirInode.addLink(inode, name);
-                } finally {
-                    translator.inodes.forgetInode(dirIno, 1);
-                }
+            Inode in = translator.inodes.openInode(ino);
+            if (!(in instanceof RegularInode)) {
+                translator.inodes.forgetInode(ino, 1);
+                throw new NoSuchFileException("illegal attempt to open non-file");
             } else {
-                if (options.contains(StandardOpenOption.CREATE_NEW)) {
-                    throw new FileAlreadyExistsException(name);
-                }
-                Inode in = translator.inodes.openInode(ino);
-                if (!(in instanceof RegularInode)) {
-                    throw new RemoteException("illegal attempt to open non-file");
-                } else {
-                    inode = (RegularInode) in;
-                }
+                inode = (RegularInode) in;
             }
 
         } catch (JExt2Exception e) {
             throw new RemoteException("Internal error opening Jext2ChannelServer", e);
         }
+    }
+
+    @Override
+    public RemoteFileHandle getRemoteFileHandle() throws RemoteException {
+        return new Jext2RemoteFileHandle(translator, name, ino);
     }
 
     @Override
@@ -112,14 +90,20 @@ public class Jext2ChannelServer extends JinixKernelUnicastRemoteObject implement
 
         this.positionOperationLock.lock();
         try {
-            ByteBuffer bb = ByteBuffer.wrap(bytes);
-            int bw = inode.writeData(bb, this.getPosition());
+            int bw = inode.writeData(bytes, this.getPosition());
             this.setPosition(this.getPosition() + bw);
             inode.setModificationTime(new Date());
             inode.sync();
             return bw;
+        } catch (NoSpaceLeftOnDevice e) {
+            throw new RemoteException("Not enough space");
+        } catch (FileTooLarge e) {
+            throw new RemoteException("File too large");
         } catch (JExt2Exception e) {
-            throw new RemoteException("failure during write", e);
+            System.err.println("failure during write: "+e.getMessage());
+            e.printStackTrace(System.err);
+            System.err.flush();
+            throw new RuntimeException("failure during write: "+e.getMessage());
         } finally {
             this.positionOperationLock.unlock();
         }
@@ -204,5 +188,4 @@ public class Jext2ChannelServer extends JinixKernelUnicastRemoteObject implement
     public String getAbsolutePathName() throws RemoteException {
         return name;
     }
-
 }

@@ -193,7 +193,7 @@ public class InodeAlloc {
 
 		if (inode.isDirectory()) {
 			groupDescr.setUsedDirsCount(groupDescr.getUsedDirsCount() - 1);
-			superblock.setDirsCount(superblock.getDirsCount() - 1);
+			superblock.incrementUsedDirsCount(-1);
 		}
 
 		if (logger.isLoggable(Level.FINE)) {
@@ -272,11 +272,11 @@ public class InodeAlloc {
 		}
 
 		/* apply changes to meta data */
-		superblock.setFreeInodesCount(superblock.getFreeInodesCount() - 1);
+		superblock.incrementFreeInodesCount(-1);
 		descr.setFreeInodesCount(descr.getFreeInodesCount() - 1);
 
 		if (inode.getMode().isDirectory()) {
-			superblock.setDirsCount(superblock.getDirsCount() + 1);
+			superblock.incrementUsedDirsCount(1);
 			descr.setUsedDirsCount(descr.getUsedDirsCount() + 1);
 		}
 

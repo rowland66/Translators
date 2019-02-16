@@ -24,6 +24,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.UUID;
 import java.util.Date;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import jext2.exceptions.IoError;
 
@@ -33,6 +36,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 
 public class Superblock extends Block {
 	private static Superblock instance;
+
+	private ReadWriteLock superBlockLock = new ReentrantReadWriteLock(false);
 
 	private long inodesCount;
 	private long blocksCount;
@@ -210,13 +215,43 @@ public class Superblock extends Block {
 			this.overhead = calculateOverhead();
 		return this.overhead;
 	}
+
+	public void incrementFreeBlocksCount(int amount) {
+	 	superBlockLock.writeLock().lock();
+	 	try {
+	 		freeBlocksCount += amount;
+		} finally {
+	 		superBlockLock.writeLock().unlock();
+		}
+	}
+
 	public void setFreeBlocksCount(long freeBlocksCount) {
 		this.freeBlocksCount = freeBlocksCount;
 	}
+
+	public void incrementFreeInodesCount(int amount) {
+		superBlockLock.writeLock().lock();
+		try {
+			freeInodesCount += amount;
+		} finally {
+			superBlockLock.writeLock().unlock();
+		}
+	}
+
 	public void setFreeInodesCount(long freeInodesCount) {
 		this.freeInodesCount = freeInodesCount;
 	}
-	public void setDirsCount(long dirsCount) {
+
+	public void incrementUsedDirsCount(int amount) {
+		superBlockLock.writeLock().lock();
+		try {
+			dirsCount += amount;
+		} finally {
+			superBlockLock.writeLock().unlock();
+		}
+	}
+
+	public void setUsedDirsCount(long dirsCount) {
 		this.dirsCount = dirsCount;
 	}
 
@@ -343,6 +378,16 @@ public class Superblock extends Block {
 		Ext2fsDataTypes.putString(buf, this.lastMounted, 64, 136);
 
 		super.write(buf);
+	}
+
+	@Override
+	public void sync() throws IoError {
+		superBlockLock.writeLock().lock();
+		try {
+			super.sync();
+		} finally {
+			superBlockLock.writeLock().unlock();
+		}
 	}
 
 	// TODO add debug code that checks bitmap

@@ -78,7 +78,7 @@ public class BlockGroupAccess {
 	}
 
 
-	class BlockGroupDescriptorIterator
+	public class BlockGroupDescriptorIterator
 	implements Iterator<BlockGroupDescriptor>, Iterable<BlockGroupDescriptor> {
 		private int current = 0;
 
