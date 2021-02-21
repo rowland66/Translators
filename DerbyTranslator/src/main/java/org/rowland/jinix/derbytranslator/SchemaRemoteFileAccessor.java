@@ -83,8 +83,4 @@ public class SchemaRemoteFileAccessor implements RemoteFileAccessor {
 
     }
 
-    @Override
-    public void flush() throws RemoteException {
-
-    }
 }

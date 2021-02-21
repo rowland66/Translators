@@ -4,12 +4,9 @@ import jext2.*;
 import jext2.exceptions.IoError;
 import jext2.exceptions.JExt2Exception;
 import jext2.exceptions.NoSuchFileOrDirectory;
-import org.apache.commons.lang3.StringUtils;
 import org.rowland.jinix.JinixKernelUnicastRemoteObject;
 import org.rowland.jinix.RootFileSystem;
-import org.rowland.jinix.io.BaseRemoteFileHandleImpl;
 import org.rowland.jinix.io.JinixFile;
-import org.rowland.jinix.io.JinixFileDescriptor;
 import org.rowland.jinix.io.JinixFileInputStream;
 import org.rowland.jinix.lang.JinixRuntime;
 import org.rowland.jinix.lang.ProcessSignalHandler;
@@ -23,12 +20,9 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.channels.*;
 import java.nio.file.*;
 import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -776,7 +770,7 @@ public class Jext2Translator extends JinixKernelUnicastRemoteObject implements F
 
         translator.shutdown();
 
-        unexportObject(translator, false);
+        translator.unexport();
 
         Filesystem.getLogger().log(Level.INFO, "Jext2 Filesystem shutdown complete: "+translator.getURI().toString());
     }

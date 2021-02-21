@@ -9,6 +9,7 @@ import org.rowland.jinix.naming.*;
 import org.rowland.jinix.nio.JinixFileChannel;
 import org.rowland.jinix.proc.ProcessManager;
 
+import javax.naming.NamingException;
 import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -27,14 +28,16 @@ import java.util.Set;
  */
 public class TimeTranslator extends JinixKernelUnicastRemoteObject implements FileNameSpace, TimeKeeper {
     private static TimeTranslator translator;
-    private JinixFileChannel translatorNode;
+    FileNameSpace parent;
+    String pathWithinParent;
     private static Thread mainThread;
 
     private int offset; // Adjustment to the time in milli-seconds.
 
-    private TimeTranslator(JinixFileChannel translatorNode) throws RemoteException {
+    private TimeTranslator(FileNameSpace parent, String pathWithinParent) throws RemoteException {
         super();
-        this.translatorNode = translatorNode;
+        this.parent = parent;
+        this.pathWithinParent = pathWithinParent;
     }
 
 
@@ -74,7 +77,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
     }
 
     @Override
-    public void delete(String file) throws NoSuchFileException, DirectoryNotEmptyException, RemoteException {
+    public void delete(String file) {
 
     }
 
@@ -89,12 +92,15 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
     }
 
     @Override
-    public Object lookup(int pid, String filePath) throws RemoteException {
+    public Object lookup(int pid, String filePath) {
         return null;
     }
 
     @Override
     public RemoteFileAccessor getRemoteFileAccessor(int pid, String name, Set<? extends OpenOption> openOptions) throws RemoteException {
+        if (name.length() > 0) {
+            return null;
+        }
         String timeStr = String.format("%1$tb %1$td %1$tY  %1$tH:%1$tM:%1$tS"+"\n",System.currentTimeMillis());
         return new TimeTranslatorFileChannel(timeStr);
     }
@@ -106,12 +112,12 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
 
     @Override
     public FileNameSpace getParent() throws RemoteException {
-        return null;
+        return parent;
     }
 
     @Override
     public String getPathWithinParent() throws RemoteException {
-        return null;
+        return pathWithinParent;
     }
 
     @Override
@@ -160,12 +166,12 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public int write(int pgid, byte[] bytes) throws RemoteException {
-            return bytes.length;
+        public int write(int pgid, byte[] bytes)  {
+            throw new UnsupportedOperationException("Unwritable Resource");
         }
 
         @Override
-        public long skip(long l) throws RemoteException {
+        public long skip(long l) {
             if (d == null) {
                 return 0;
             }
@@ -173,7 +179,7 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public int available() throws RemoteException {
+        public int available() {
             if (d == null) {
                 return 0;
             }
@@ -181,17 +187,17 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
         }
 
         @Override
-        public long getFilePointer() throws RemoteException {
+        public long getFilePointer() {
             return 0;
         }
 
         @Override
-        public void seek(long l) throws RemoteException {
-
+        public void seek(long l) {
+            throw new UnsupportedOperationException("Seek unsupported");
         }
 
         @Override
-        public long length() throws RemoteException {
+        public long length() {
             return 0;
         }
 
@@ -230,7 +236,10 @@ public class TimeTranslator extends JinixKernelUnicastRemoteObject implements Fi
             return;
         }
         try {
-            translator = new TimeTranslator(null);
+            RemoteFileHandle file = (RemoteFileHandle) (new JinixContext()).lookup(jinixFile.getAbsolutePath());
+            translator = new TimeTranslator(file.getParent(), file.getPath());
+        } catch (NamingException e) {
+            throw new RuntimeException("Failed to lookup translator file", e);
         } catch (IOException e) {
             throw new RuntimeException("Translator failed initialization",e);
         }

@@ -1,9 +1,8 @@
 package org.rowland.jinix.derbytranslator;
 
-import org.apache.derby.jdbc.AutoloadedDriver;
+import org.apache.derby.iapi.jdbc.AutoloadedDriver;
 import org.rowland.jinix.io.BaseRemoteFileHandleImpl;
 import org.rowland.jinix.io.JinixFile;
-import org.rowland.jinix.io.JinixFileDescriptor;
 import org.rowland.jinix.io.SimpleDirectoryRemoteFileHandle;
 import org.rowland.jinix.lang.JinixRuntime;
 import org.rowland.jinix.lang.ProcessSignalHandler;

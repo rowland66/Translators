@@ -132,11 +132,6 @@ public class TableRemoteFileAccessor extends UnicastRemoteObject implements Remo
     }
 
     @Override
-    public void flush() throws RemoteException {
-
-    }
-
-    @Override
     protected void finalize() throws Throwable {
         super.finalize();
         close();
